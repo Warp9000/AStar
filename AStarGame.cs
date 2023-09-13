@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using AStar;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -13,7 +14,7 @@ public class AStarGame : Game
 
     private Texture2D pixel;
     private Node[,] grid;
-    private int gridSize = 16;
+    private int gridSize = 4;
     private (int x, int y) playerPosition;
     private (int x, int y) targetPosition;
 
@@ -39,6 +40,24 @@ public class AStarGame : Game
 
     private KeyboardState oldKeyboardState = Keyboard.GetState();
     private MouseState oldMouseState = Mouse.GetState();
+
+    private Stopwatch stopwatch = new();
+
+    private void brush(int x, int y, bool walkable)
+    {
+        if (x < 0 || x >= grid.GetLength(0) || y < 0 || y >= grid.GetLength(1))
+            return;
+        grid[x, y].IsWalkable = walkable;
+
+        if (x + 1 < grid.GetLength(0))
+            grid[x + 1, y].IsWalkable = walkable;
+        if (x - 1 >= 0)
+            grid[x - 1, y].IsWalkable = walkable;
+        if (y + 1 < grid.GetLength(1))
+            grid[x, y + 1].IsWalkable = walkable;
+        if (y - 1 >= 0)
+            grid[x, y - 1].IsWalkable = walkable;
+    }
     protected override void Update(GameTime gameTime)
     {
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
@@ -55,17 +74,29 @@ public class AStarGame : Game
         }
         if (Mouse.GetState().LeftButton == ButtonState.Pressed)
         {
-            AStar<Node>.Bresenham(oldMousePosition, mousePosition).ForEach(point => grid[point.x, point.y].IsWalkable = false);
+            AStar<Node>.Bresenham(oldMousePosition, mousePosition).ForEach(point => brush(point.x, point.y, false));
         }
         if (Mouse.GetState().RightButton == ButtonState.Pressed)
         {
-            AStar<Node>.Bresenham(oldMousePosition, mousePosition).ForEach(point => grid[point.x, point.y].IsWalkable = true);
+            AStar<Node>.Bresenham(oldMousePosition, mousePosition).ForEach(point => brush(point.x, point.y, true));
         }
 
         if (Keyboard.GetState().IsKeyDown(Keys.P))
             playerPosition = mousePosition;
         if (Keyboard.GetState().IsKeyDown(Keys.T))
             targetPosition = mousePosition;
+
+        if (Keyboard.GetState().IsKeyDown(Keys.M) && oldKeyboardState.IsKeyUp(Keys.M))
+        {
+            stopwatch.Restart();
+            var bgrid = MazeGenerator.MazeGenerator.GenerateMaze(grid.GetLength(0), grid.GetLength(1), playerPosition, targetPosition);
+            stopwatch.Stop();
+            Console.WriteLine("maze: " + (stopwatch.ElapsedTicks / (double)TimeSpan.TicksPerMillisecond).ToString("0.000") + "ms");
+
+            for (int x = 0; x < grid.GetLength(0); x++)
+                for (int y = 0; y < grid.GetLength(1); y++)
+                    grid[x, y].IsWalkable = bgrid[x, y];
+        }
 
         if (Keyboard.GetState().IsKeyDown(Keys.Space) && oldKeyboardState.IsKeyUp(Keys.Space))
         {
@@ -78,7 +109,10 @@ public class AStarGame : Game
                 item.Walked = false;
             }
             AStar<Node> aStar = new(grid);
+            stopwatch.Restart();
             Path path = aStar.GetPath(playerPosition, targetPosition);
+            stopwatch.Stop();
+            Console.WriteLine("path: " + (stopwatch.ElapsedTicks / (double)TimeSpan.TicksPerMillisecond).ToString("0.000") + "ms");
             if (path != null)
             {
                 foreach (Direction direction in path.Directions)
@@ -102,7 +136,10 @@ public class AStarGame : Game
                 item.Walked = false;
             }
             AStar<Node> aStar = new(grid);
+            stopwatch.Restart();
             Path path = aStar.GetSmoothPath(playerPosition, targetPosition);
+            stopwatch.Stop();
+            Console.WriteLine("smooth path: " + (stopwatch.ElapsedTicks / (double)TimeSpan.TicksPerMillisecond).ToString("0.000") + "ms");
             if (path != null)
             {
                 foreach (Direction direction in path.Directions)
