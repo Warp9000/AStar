@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using AStar;
 using Microsoft.Xna.Framework;
@@ -14,6 +15,7 @@ public class AStarGame : Game
 
     private Texture2D pixel;
     private Node[,] grid;
+    List<(int x, int y)> LinePoints = new();
     private int gridSize = 4;
     private (int x, int y) playerPosition;
     private (int x, int y) targetPosition;
@@ -100,14 +102,7 @@ public class AStarGame : Game
 
         if (Keyboard.GetState().IsKeyDown(Keys.Space) && oldKeyboardState.IsKeyUp(Keys.Space))
         {
-            foreach (var item in grid)
-            {
-                item.F = 0;
-                item.G = 0;
-                item.H = 0;
-                item.Parent = null;
-                item.Walked = false;
-            }
+            ResetGrid();
             AStar<Node> aStar = new(grid);
             stopwatch.Restart();
             Path path = aStar.GetPath(playerPosition, targetPosition);
@@ -127,14 +122,7 @@ public class AStarGame : Game
         }
         if (Keyboard.GetState().IsKeyDown(Keys.S) && oldKeyboardState.IsKeyUp(Keys.S))
         {
-            foreach (var item in grid)
-            {
-                item.F = 0;
-                item.G = 0;
-                item.H = 0;
-                item.Parent = null;
-                item.Walked = false;
-            }
+            ResetGrid();
             AStar<Node> aStar = new(grid);
             stopwatch.Restart();
             Path path = aStar.GetSmoothPath(playerPosition, targetPosition);
@@ -153,6 +141,24 @@ public class AStarGame : Game
             }
         }
 
+        if (Keyboard.GetState().IsKeyDown(Keys.K) && oldKeyboardState.IsKeyUp(Keys.K))
+        {
+            ResetGrid();
+            AStar<Node> aStar = new(grid);
+            stopwatch.Restart();
+            var points = aStar.GetCornerPoints(playerPosition, targetPosition);
+            stopwatch.Stop();
+            Console.WriteLine("corner points: " + (stopwatch.ElapsedTicks / (double)TimeSpan.TicksPerMillisecond).ToString("0.000") + "ms");
+            if (points != null)
+            {
+                LinePoints = points;
+                for (int i = 0; i < points.Count; i++)
+                {
+                    grid[points[i].x, points[i].y].Walked = true;
+                }
+            }
+        }
+
         if (Keyboard.GetState().IsKeyDown(Keys.C) && oldKeyboardState.IsKeyUp(Keys.C))
         {
             for (int x = 0; x < grid.GetLength(0); x++)
@@ -164,6 +170,19 @@ public class AStarGame : Game
         oldMouseState = Mouse.GetState();
 
         base.Update(gameTime);
+    }
+
+    private void ResetGrid()
+    {
+        foreach (var item in grid)
+        {
+            item.F = 0;
+            item.G = 0;
+            item.H = 0;
+            item.Parent = null;
+            item.Walked = false;
+        }
+        LinePoints.Clear();
     }
 
     protected override void Draw(GameTime gameTime)
@@ -198,8 +217,26 @@ public class AStarGame : Game
                 }
             }
         }
+        if (LinePoints.Count >= 2)
+        {
+            for (int i = 0; i < LinePoints.Count - 1; i++)
+            {
+                DrawLine(spriteBatch, Color.Red, LinePoints[i], LinePoints[i + 1]);
+            }
+        }
         spriteBatch.End();
         base.Draw(gameTime);
+    }
+
+    protected void DrawLine(SpriteBatch spriteBatch, Color color, (int x, int y) start, (int x, int y) end)
+    {
+        Vector2 screenPos1 = new(start.x * gridSize + gridSize / 2, start.y * gridSize + gridSize / 2);
+        Vector2 screenPos2 = new(end.x * gridSize + gridSize / 2, end.y * gridSize + gridSize / 2);
+
+        float angle = (float)Math.Atan2(screenPos2.Y - screenPos1.Y, screenPos2.X - screenPos1.X);
+        float length = Vector2.Distance(screenPos1, screenPos2);
+
+        spriteBatch.Draw(pixel, screenPos1, null, color, angle, Vector2.Zero, new Vector2(length, 1), SpriteEffects.None, 0);
     }
 }
 
