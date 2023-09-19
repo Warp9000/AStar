@@ -208,11 +208,9 @@ public class AStar<T> where T : INode
         return true;
     }
 
-    private static int GetDistance(T a, T b)
+    private static float GetDistance(T a, T b)
     {
-        int x = Math.Abs(a.Position.x - b.Position.x);
-        int y = Math.Abs(a.Position.y - b.Position.y);
-        return x + y;
+        return MathF.Sqrt(MathF.Pow(a.Position.x - b.Position.x, 2) + MathF.Pow(a.Position.y - b.Position.y, 2));
     }
 
     private static Direction? GetDirectionToNeighbor(INode from, INode to)

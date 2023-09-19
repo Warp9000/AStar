@@ -153,6 +153,13 @@ public class AStarGame : Game
             }
         }
 
+        if (Keyboard.GetState().IsKeyDown(Keys.C) && oldKeyboardState.IsKeyUp(Keys.C))
+        {
+            for (int x = 0; x < grid.GetLength(0); x++)
+                for (int y = 0; y < grid.GetLength(1); y++)
+                    grid[x, y].IsWalkable = true;
+        }
+
         oldKeyboardState = Keyboard.GetState();
         oldMouseState = Mouse.GetState();
 
