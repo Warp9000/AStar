@@ -15,11 +15,13 @@ public class AStarGame : Game
 
     private Texture2D pixel;
     private Node[,] grid;
-    List<(int x, int y)> LinePoints = new();
-    private int gridSize = 4;
-    private (int x, int y) playerPosition;
-    private (int x, int y) targetPosition;
+    List<Position> LinePoints = new();
+    private int gridSize = 16;
+    private Position playerPosition;
+    private Position targetPosition;
+    private bool dir4 = false;
 
+#pragma warning disable CS8618
     public AStarGame()
     {
         graphics = new GraphicsDeviceManager(this);
@@ -29,6 +31,9 @@ public class AStarGame : Game
 
     protected override void Initialize()
     {
+        graphics.PreferredBackBufferWidth = 1280;
+        graphics.PreferredBackBufferHeight = 720;
+        graphics.ApplyChanges();
         grid = new Node[graphics.PreferredBackBufferWidth / gridSize, graphics.PreferredBackBufferHeight / gridSize];
         base.Initialize();
     }
@@ -65,8 +70,8 @@ public class AStarGame : Game
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
 
-        (int x, int y) mousePosition = (Mouse.GetState().X / gridSize, Mouse.GetState().Y / gridSize);
-        (int x, int y) oldMousePosition = (oldMouseState.X / gridSize, oldMouseState.Y / gridSize);
+        Position mousePosition = (Mouse.GetState().X / gridSize, Mouse.GetState().Y / gridSize);
+        Position oldMousePosition = (oldMouseState.X / gridSize, oldMouseState.Y / gridSize);
         if (mousePosition.x < 0 || mousePosition.x >= grid.GetLength(0) || mousePosition.y < 0 || mousePosition.y >= grid.GetLength(1))
         {
             oldKeyboardState = Keyboard.GetState();
@@ -103,16 +108,16 @@ public class AStarGame : Game
         if (Keyboard.GetState().IsKeyDown(Keys.Space) && oldKeyboardState.IsKeyUp(Keys.Space))
         {
             ResetGrid();
-            AStar<Node> aStar = new(grid);
+            AStar<Node> aStar = new(grid, dir4);
             stopwatch.Restart();
-            Path path = aStar.GetPath(playerPosition, targetPosition);
+            Path? path = aStar.GetPath(playerPosition, targetPosition);
             stopwatch.Stop();
             Console.WriteLine("path: " + (stopwatch.ElapsedTicks / (double)TimeSpan.TicksPerMillisecond).ToString("0.000") + "ms");
             if (path != null)
             {
                 foreach (Direction direction in path.Directions)
                 {
-                    (int x, int y) offset = AStar<Node>.GetOffset(direction);
+                    Position offset = AStar<Node>.GetOffset(direction);
                     playerPosition.x += offset.x;
                     playerPosition.y += offset.y;
 
@@ -123,16 +128,16 @@ public class AStarGame : Game
         if (Keyboard.GetState().IsKeyDown(Keys.S) && oldKeyboardState.IsKeyUp(Keys.S))
         {
             ResetGrid();
-            AStar<Node> aStar = new(grid);
+            AStar<Node> aStar = new(grid, dir4);
             stopwatch.Restart();
-            Path path = aStar.GetSmoothPath(playerPosition, targetPosition);
+            Path? path = aStar.GetSmoothPath(playerPosition, targetPosition);
             stopwatch.Stop();
             Console.WriteLine("smooth path: " + (stopwatch.ElapsedTicks / (double)TimeSpan.TicksPerMillisecond).ToString("0.000") + "ms");
             if (path != null)
             {
                 foreach (Direction direction in path.Directions)
                 {
-                    (int x, int y) offset = AStar<Node>.GetOffset(direction);
+                    Position offset = AStar<Node>.GetOffset(direction);
                     playerPosition.x += offset.x;
                     playerPosition.y += offset.y;
 
@@ -144,7 +149,7 @@ public class AStarGame : Game
         if (Keyboard.GetState().IsKeyDown(Keys.K) && oldKeyboardState.IsKeyUp(Keys.K))
         {
             ResetGrid();
-            AStar<Node> aStar = new(grid);
+            AStar<Node> aStar = new(grid, dir4);
             stopwatch.Restart();
             var points = aStar.GetCornerPoints(playerPosition, targetPosition);
             stopwatch.Stop();
@@ -164,6 +169,15 @@ public class AStarGame : Game
             for (int x = 0; x < grid.GetLength(0); x++)
                 for (int y = 0; y < grid.GetLength(1); y++)
                     grid[x, y].IsWalkable = true;
+        }
+
+        if (Keyboard.GetState().IsKeyDown(Keys.D4) && oldKeyboardState.IsKeyUp(Keys.D4))
+        {
+            dir4 = true;
+        }
+        if (Keyboard.GetState().IsKeyDown(Keys.D8) && oldKeyboardState.IsKeyUp(Keys.D8))
+        {
+            dir4 = false;
         }
 
         oldKeyboardState = Keyboard.GetState();
@@ -228,7 +242,7 @@ public class AStarGame : Game
         base.Draw(gameTime);
     }
 
-    protected void DrawLine(SpriteBatch spriteBatch, Color color, (int x, int y) start, (int x, int y) end)
+    protected void DrawLine(SpriteBatch spriteBatch, Color color, Position start, Position end)
     {
         Vector2 screenPos1 = new(start.x * gridSize + gridSize / 2, start.y * gridSize + gridSize / 2);
         Vector2 screenPos2 = new(end.x * gridSize + gridSize / 2, end.y * gridSize + gridSize / 2);
@@ -248,6 +262,6 @@ public class Node : INode
     public float G { get; set; }
     public float H { get; set; }
     public float F { get; set; }
-    public INode Parent { get; set; }
-    public (int x, int y) Position { get; set; }
+    public INode? Parent { get; set; }
+    public Position Position { get; set; }
 }
